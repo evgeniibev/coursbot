@@ -1,6 +1,7 @@
 <?php 
 header('Content-Type: text/html; charset=utf-8');
 
+
 if (!isset($_REQUEST)) { 
 	return;
 } 
@@ -11,6 +12,7 @@ $appid = file_get_contents("appid.txt"); // ключ twitch
 $bdname = file_get_contents("bdname.txt"); // имя БД
 $bdpass = file_get_contents("bdpass.txt"); // пароль БД
 $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
+
 
 
 // CURL запрос
@@ -30,6 +32,7 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 	}
 
 	
+	
 	//global $key, $data, $start, $appid;
 	switch($data->type){
 
@@ -39,11 +42,13 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 			if ($group_id != '189871008'){
 				echo("error:(");
 			}
-  			else echo "d68cffd9";
+  			else echo "d44cffd9";
   		break;
 
 	case "message_new":
 
+
+			// в случае, если ВКонтакте начинает повторно слать один и тот же запрос. Просто проверка по времени. (если сообщение было отправлено более 7 секунд назад - тогда в игнор)
 			$now_time = strtotime("now");
 			$mes_time = $data->object->date;
 			$var4 = $now_time - $mes_time;
@@ -110,7 +115,7 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 				//если не был подписан на стримера
 				if ($del_check == 0){
 
-					$mes_for_send = "Вы и не подписывались на $qbody[1] :|";
+					$mes_for_send = "Вы отписались от $qbody[1]";
 					sendvk($mes_for_send, $user_id, $key, $keyboard);
 
 					//echo 'ok';
@@ -336,10 +341,6 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 				}
 				else{
 					$top_kolvo = $qbody[1];
-
-					if ($top_kolvo > 20 or $top_kolvo < 1){
-						$top_kolvo = 20;
-					}
 				}
 
 
@@ -437,6 +438,8 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 
 				$meh = json_decode($result);
 
+
+				// есть ли партнёрка
 				$partner = $meh->streams[0]->channel->partner;
 				if (isset($partner)) {
 					if ($partner == 1){
@@ -464,7 +467,7 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 
 
 
-			// WTF?
+			// WTF? Если нет такой команды
 			else{
 
 				$mes_for_send = "Неизвестная команда. Напиши -> привет";
@@ -476,80 +479,53 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 
 
 
-
-
-	case "message_reply":
-
-			$now_time = strtotime("now");
-			$mes_time = $data->object->date;
-			$var4 = $now_time - $mes_time;
-			if ($var4 > 7){
-				echo("ok");
-				break;
-			}
-
 	default:
-		//echo "$time";
-    	echo("ok");
 
-    	echo "<br/>";
+		// каждую минуту проверять онлайн стримеров.
+		//echo "$time";
+    	echo("ok"); // для ВК
+
 		$connect = mysqli_connect('localhost', "$bdlogin", "$bdpass", "$bdname");
-		
 		$queryz = "SELECT * FROM `status`";
 		$result = mysqli_query($connect, $queryz);
 
-		//streamer
     	$name_in_status = []; 
 		 
 		while($myrow = mysqli_fetch_assoc($result)) { 
-			$name_in_status[] = $myrow['streamer'];
+			$name_in_status[] = $myrow['streamer']; // массив с никами стримеров
 
-			$online_in_status[] = $myrow['online'];
+			$online_in_status[] = $myrow['online']; // их онлайн
 
-			$id_in_status[] = $myrow['streamerid'];
+			$id_in_status[] = $myrow['streamerid']; // их id
 		}
-
-
-		print_r($name_in_status);
-		echo "<br/>";
-		print_r($online_in_status);
-		echo "<br/>";
+		
 
 		//поменять значения с ключами
-		$mas = array_flip($name_in_status);
-		
-		print_r($mas);
-		echo "<br/>";
+		$mas_key_diff = array_flip($name_in_status); // streamer1 => 0, streamer2 => 1 и т.д. 
 		
 		//для каждого значения присвоить онлайн
-		for($i = 0; $i < count($mas); $i++){
-			$mas[$name_in_status[$i]] = $online_in_status[$i];
+		for($i = 0; $i < count($mas_key_diff); $i++){
+			$mas_key_diff[$name_in_status[$i]] = $online_in_status[$i];
+			// значения у каждого стримера будут либо 0 либо 1 в зависимости от онлайна
 		}
 
-		print_r($mas);
-		echo "<br/>";
-		//echo "$appid";
-		echo "<br/>";
 
 		//погнали по твичу
-		$id_in_status = implode(",", $id_in_status);
+		$id_in_status = implode(",", $id_in_status); // для запроса API все id стриммеров в одну строку через запятую
 
 		//CURL
 		$curl_url = "https://api.twitch.tv/kraken/streams/?channel=$id_in_status";
 		curltw($curl_url, $appid);
 
 		$meh = json_decode($result);
-		echo "<pre>";
-		//echo "sykaa";
-		print_r($meh);
-		//echo "</pre>";
+
 
 		//сколько онлайн
 		$now_online_arr = $meh->streams;
 		$now_online = count($now_online_arr);
 
 
-		//если все оффлайн
+		//если все оффлайн - тогда просто всем выставляем 0 в БД
 		if ($now_online == 0){
 
 			$queryz = "SELECT * FROM `status` WHERE `online` LIKE '1'";
@@ -571,6 +547,7 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 
 
 
+		// массив со стримера кто сейчас онлайн на сайте. Заполняем его
 		$streamers_online = [];
 		for($i = 0; $i < $now_online; $i++){
 			if ($meh->streams[$i]->stream_type == 'live'){
@@ -583,7 +560,6 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 
 
 		//ключи с элементами поменять
-		echo "<br/>";
 		$streamers_revers = array_flip($streamers_online);
 		print_r($streamers_online);
 
@@ -591,86 +567,54 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 		for($i = 0; $i < count($streamers_online); $i++){
 			$arr_online[$streamers_online[$i]] = 1;
 		}
-
-		echo "<br/>";
-		print_r($mas);
-		$mas2 = $mas;
-		echo "<br/>";
-
-		//$asd = ['C_a_k_e' => 1];
-		//$arr_online = $arr_online + $asd;
+		// В итоге будет: streamer1 => 1, streamer2 => 1 и т.д...
+		
 
 
-		print_r($arr_online);
-		//echo "<- эти онлайн";
 
+		// Нам нужно понять и сравнить, кто из стримеров подрубил стрим, а кто оффнул. Сравниваем ключи и значения массива стримеров из БД и массива стримеров из twitch API
 
-		$shozi = array_keys($arr_online);
-		echo "<br/>";
-		print_r($shozi);
-		//echo "<- эти онлайн";
-
+		$mas_key_diff2 = $mas_key_diff;
+		$shozi = array_keys($arr_online); // индексы стримеров кто онлайн
 
 		for ($i = 0; $i < count($shozi); $i++){
-			unset($mas["$shozi[$i]"]);
+			unset($mas_key_diff["$shozi[$i]"]);
 		}
 
-		echo "<br/>";
-		print_r($mas);
-		//echo "<-----mas";
+		$mas_offline = array_keys($mas_key_diff);
 
-
-		$bbb = array_keys($mas);
-		echo "<br/>";
-		print_r($bbb);
-		//echo "<-bbbbb";
-
-		for ($i = 0; $i < count($mas); $i++){
-			$mas["$bbb[$i]"] = 0;
+		for ($i = 0; $i < count($mas_key_diff); $i++){
+			$mas_key_diff["$mas_offline[$i]"] = 0;
 		}
 
-		echo "<br/>";//
-		print_r($mas);
 
-		//эти оффлайн
-		$arr_offline = $mas;
-
+		//эти оффлайн!!!!
+		$arr_offline = $mas_key_diff;
 		$arr_result = array_merge($arr_online, $arr_offline);
 
-		echo "<br/>";
-		print_r($arr_result);
-		//echo "res";
-		echo "<br/>";
 
-		echo "<br/>";
-		print_r($mas2);
-		//echo "<-mas2";
-		echo "<br/>";
-
-		//echo "vasan9";
 		//ВОТ ЭТО ТЕХ КТО ОФНУЛ ИЛИ ЗАВЁЛ
-		$rezult = array_diff_assoc($arr_result, $mas2);
+		$rezult = array_diff_assoc($arr_result, $mas_key_diff2);
 		$rezult_key = array_keys($rezult);
 
-		echo "<br/>";
-		print_r($rezult);
 
-		echo "<br/>";
-		print_r($rezult_key);
+		//print_r($rezult);
+		//print_r($rezult_key);
 
-		//echo "vasan8";
+
+
+		// Всё, ура! У нас есть массив тех кто оффнул - у них значение 0, и кто завёл стрим - у них значение 1. Делаем новый массив и закидываем туда кто начал трансляцию.
 		$rez_vk = [];
-
 		for ($i = 0; $i < count($rezult); $i++){
 			if ($rezult["$rezult_key[$i]"] == 1){
 				array_push($rez_vk, $rezult_key[$i]);
 			}
 		}
-		echo "<br/>";
-		print_r($rez_vk);
+		
+		//print_r($rez_vk);
 
 		
-		//echo "vasan6";
+		// обновляем в БД статусы стримеров
 		for ($i = 0; $i < count($rezult); $i++){
 			$set_online = $rezult["$rezult_key[$i]"];
 
@@ -679,15 +623,19 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 		}
 		
 
-		//echo "vasan1";
+		// если есть такие, кто начал стрим, тогда..
 		if (isset($rez_vk[0])) {
-			//echo "vasan12";
+
 			for ($i = 0; $i < count($rezult); $i++){
 
+
+				// очищаем массивы кому отправляли
 				unset($komy);
 				unset($komy_str);
 				unset($myrow);
 
+
+				// выбираем человека, кому отправить сообщение о начале стрима
 				$queryz = "SELECT * FROM `twitch` WHERE `streamer` LIKE '$rez_vk[$i]'";
 				$result = mysqli_query($connect, $queryz);
 
@@ -697,7 +645,7 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 					$komy[] = $myrow['idvk'];
 				}
 
-				//echo "vasan3";
+				// если нужно отправить нескольким людям, тогда объединям id VK в одну строку. 
 				$komy_str = implode(',', $komy);
 				$req_mes = array(
 		  				'user_ids' => $komy_str,
@@ -715,8 +663,9 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 				unset($komy);
 				unset($komy_str);
 				unset($myrow);
-				//echo "vasan4";
+
 		}
+
 	}
 }
 
