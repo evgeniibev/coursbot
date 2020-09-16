@@ -42,7 +42,7 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 			if ($group_id != '189871008'){
 				echo("error:(");
 			}
-  			else echo "d44cffd9";
+  			else echo "d68cffd9";
   		break;
 
 	case "message_new":
