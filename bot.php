@@ -1,6 +1,5 @@
 <?php 
 header('Content-Type: text/html; charset=utf-8');
-$start = microtime(true);
 
 if (!isset($_REQUEST)) { 
 	return;
@@ -12,7 +11,6 @@ $appid = file_get_contents("appid.txt"); // ключ twitch
 $bdname = file_get_contents("bdname.txt"); // имя БД
 $bdpass = file_get_contents("bdpass.txt"); // пароль БД
 $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
-
 
 
 // CURL запрос
@@ -32,7 +30,6 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 	}
 
 	
-	date_default_timezone_set('Asia/Yekaterinburg');
 	//global $key, $data, $start, $appid;
 	switch($data->type){
 
