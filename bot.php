@@ -717,30 +717,7 @@ $bdlogin = file_get_contents("bdlogin.txt"); // логин БД
 				unset($myrow);
 				//echo "vasan4";
 		}
-
-		//echo "vasan5";
-
-		
-
-
-
-
-
-
-		//UPDATE `status` SET `online` = '1' WHERE `streamer` LIKE 'modestall';
-		//SELECT * FROM `twitch` WHERE `streamer` LIKE 'mob5tertv'
-
-		
-
-
-
-
-	}// конец switch
+	}
 }
 
-
-/* проблемы:
-макс 100 получателей
-
-*/
 ?>
